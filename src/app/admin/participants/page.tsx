@@ -423,7 +423,6 @@ export default function AdminParticipantsPage() {
                 <input
                   type="number"
                   min={1}
-                  max={200}
                   value={batchCount}
                   onChange={(e) => setBatchCount(Number(e.target.value))}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900"

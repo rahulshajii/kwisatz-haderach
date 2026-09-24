@@ -85,8 +85,8 @@ export async function POST(req: NextRequest) {
     const { action, count = 5, names = [], singleName } = body;
 
     if (action === "generate_batch") {
-      // Generate `count` random codes
-      const numToGenerate = Math.min(Math.max(1, Number(count) || 5), 200);
+      // Generate `count` random codes without any artificial student limit
+      const numToGenerate = Math.max(1, Number(count) || 5);
       const created = [];
 
       for (let i = 0; i < numToGenerate; i++) {

@@ -79,19 +79,7 @@ npm run prisma:push
 ```bash
 npm run prisma:seed
 ```
-This provisions:
-- Admin account: `admin` / `Kwisatz@Pragyan2026`
-- Active tournament: `KWISATZ HADERACH`
-- 20 high-quality technical questions
-- 10 demo participants (including `KH26-A7F92` for Rahul Shaji)
 
-### Step 4: Run Development Server
-```bash
-npm run dev
-```
-Open [http://localhost:3000](http://localhost:3000) on your mobile phone or browser.
-
----
 
 ## 5. Application Route Map
 

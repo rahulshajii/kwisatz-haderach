@@ -1,0 +1,180 @@
+// KWISATZ HADERACH - PRAGYAN 2026
+// Database Schema for ASIET Department of Computer Applications
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum QuizStatus {
+  WAITING
+  RUNNING
+  PAUSED
+  FINISHED
+  CANCELLED
+}
+
+enum ParticipantStatus {
+  REGISTERED
+  WAITING
+  ACTIVE
+  COMPLETED
+  FAILED
+  DISCONNECTED
+  TERMINATED
+}
+
+enum AntiCheatMode {
+  STRICT
+  WARNING
+}
+
+model Admin {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  passwordHash  String    @map("password_hash")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@map("admins")
+}
+
+model Quiz {
+  id                      String         @id @default(uuid())
+  name                    String         @default("KWISATZ HADERACH")
+  eventName               String         @default("PRAGYAN 2026") @map("event_name")
+  college                 String         @default("Adi Shankara Institute of Engineering and Technology (ASIET)")
+  department              String         @default("Department of Computer Applications")
+  status                  QuizStatus     @default(WAITING)
+  duration                Int            @default(1800) // Total duration in seconds (30 mins)
+  antiCheatMode           AntiCheatMode  @default(STRICT) @map("anti_cheat_mode")
+  tieBreakRule            String         @default("SCORE_CORRECT_TIME") @map("tie_break_rule")
+  allowReconnect          Boolean        @default(true) @map("allow_reconnect")
+  warningThreshold        Int            @default(2) @map("warning_threshold")
+  firstPrizeParticipantId String?        @map("first_prize_participant_id")
+  secondPrizeParticipantId String?       @map("second_prize_participant_id")
+  createdAt               DateTime       @default(now()) @map("created_at")
+  startedAt               DateTime?      @map("started_at")
+  endedAt                 DateTime?      @map("ended_at")
+
+  participants            Participant[]
+  questions               Question[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("quizzes")
+}
+
+model Participant {
+  id           String            @id @default(uuid())
+  name         String
+  uniqueCode   String            @unique @map("unique_code")
+  quizId       String            @map("quiz_id")
+  status       ParticipantStatus @default(REGISTERED)
+  score        Float             @default(0.0)
+  rank         Int?
+  correctCount Int               @default(0) @map("correct_count")
+  wrongCount   Int               @default(0) @map("wrong_count")
+  totalTimeMs  Int               @default(0) @map("total_time_ms")
+  warningCount Int               @default(0) @map("warning_count")
+  failReason   String?           @map("fail_reason")
+
+  joinedAt     DateTime?         @map("joined_at")
+  startedAt    DateTime?         @map("started_at")
+  completedAt  DateTime?         @map("completed_at")
+  failedAt     DateTime?         @map("failed_at")
+  createdAt    DateTime          @default(now()) @map("created_at")
+
+  quiz         Quiz              @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers      Answer[]
+  activityLogs ActivityLog[]
+  sessions     QuizSession[]
+
+  @@index([uniqueCode])
+  @@index([quizId])
+  @@index([status])
+  @@index([score(sort: Desc), totalTimeMs(sort: Asc)])
+  @@index([createdAt])
+  @@map("participants")
+}
+
+model Question {
+  id             String    @id @default(uuid())
+  quizId         String    @map("quiz_id")
+  questionNumber Int       @map("question_number")
+  questionText   String    @map("question_text")
+  optionA        String    @map("option_a")
+  optionB        String    @map("option_b")
+  optionC        String    @map("option_c")
+  optionD        String    @map("option_d")
+  correctAnswer  String    @map("correct_answer") // 'A', 'B', 'C', or 'D'
+  marks          Float     @default(1.0)
+  negativeMarks  Float     @default(0.0) @map("negative_marks")
+  timeLimit      Int       @default(30) @map("time_limit") // Seconds per question
+  explanation    String?   @map("explanation")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  quiz           Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers        Answer[]
+
+  @@unique([quizId, questionNumber])
+  @@index([quizId])
+  @@index([questionNumber])
+  @@map("questions")
+}
+
+model Answer {
+  id             String      @id @default(uuid())
+  participantId  String      @map("participant_id")
+  questionId     String      @map("question_id")
+  selectedAnswer String      @map("selected_answer") // 'A', 'B', 'C', 'D', or 'TIMEOUT'
+  isCorrect      Boolean     @map("is_correct")
+  marksAwarded   Float       @map("marks_awarded")
+  timeTakenMs    Int         @default(0) @map("time_taken_ms")
+  submittedAt    DateTime    @default(now()) @map("submitted_at")
+
+  participant    Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  question       Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, questionId])
+  @@index([participantId])
+  @@index([questionId])
+  @@index([submittedAt])
+  @@map("answers")
+}
+
+model ActivityLog {
+  id            String      @id @default(uuid())
+  participantId String      @map("participant_id")
+  eventType     String      @map("event_type") // e.g. PAGE_HIDDEN, TAB_SWITCH, WINDOW_BLUR, FULLSCREEN_EXIT, QUIZ_STARTED, ANSWER_SUBMITTED, QUIZ_TERMINATED
+  metadata      String?     @map("metadata")   // JSON string of extra context
+  timestamp     DateTime    @default(now())
+
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([participantId])
+  @@index([eventType])
+  @@index([timestamp])
+  @@map("activity_logs")
+}
+
+model QuizSession {
+  id              String      @id @default(uuid())
+  participantId   String      @map("participant_id")
+  sessionToken    String      @unique @map("session_token")
+  currentQuestion Int         @default(1) @map("current_question")
+  sessionStatus   String      @default("ACTIVE") @map("session_status") // ACTIVE, TERMINATED, RECONNECTED
+  lastSeen        DateTime    @default(now()) @map("last_seen")
+  connectedAt     DateTime    @default(now()) @map("connected_at")
+  disconnectedAt  DateTime?   @map("disconnected_at")
+
+  participant     Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([participantId])
+  @@index([sessionToken])
+  @@index([lastSeen])
+  @@map("quiz_sessions")
+}
